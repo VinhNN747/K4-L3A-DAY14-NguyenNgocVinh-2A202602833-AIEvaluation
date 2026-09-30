@@ -319,6 +319,94 @@ Hoàn thành `reflection.md` bằng kết quả thật từ Exercise 3.2.
 
 ---
 
+## Completed Worksheet
+
+### Exercise 1.1
+
+| Metric | Acceptable Low Score Scenario | Critical Low Score Scenario | Action Required |
+|---|---|---|---|
+| Faithfulness | Safe refusal with little lexical overlap | Unsupported policy, price, or status claim | Ground answers in retrieved evidence |
+| Answer Relevance | Brief clarification question | Does not address the customer intent | Improve intent routing/prompt |
+| Context Recall | Nonessential detail omitted | Required policy condition is absent | Improve query/chunk retrieval |
+| Context Precision | Extra harmless chunk after evidence | Noise displaces evidence at top ranks | Rerank or refine query |
+| Completeness | User asked for a narrow sub-question | Required deadline, fee, or exception missing | Add answer coverage checks |
+
+Position-bias experiment: score the same answer pair twice with A/B order randomized; compare the score distribution for each answer by position. Repeat with labels removed and a blind human calibration set. Verbosity bias is reduced by scoring atomic, weighted criteria (correct conditions, exceptions, safety) and explicitly stating that length earns no credit. Human labels are necessary to estimate agreement, detect systematic judge drift, and calibrate the pass threshold.
+
+| Metric | Threshold | Lý do |
+|---|---:|---|
+| Faithfulness | 0.70 | Unsupported customer-policy claims are high risk. |
+| Answer Relevance | 0.60 | The answer must address the requested support action. |
+| Completeness | 0.70 | Dates, fees, and exceptions materially affect outcomes. |
+
+Use offline evaluation for every code/prompt/retrieval change, online monitoring for production drift and sampled feedback, and human review for safety, ambiguous policy, and threshold-borderline cases.
+
+### Exercise 3.1
+
+| Hạng mục | Kết quả |
+|---|---|
+| Tổng số records | 20 / 20 |
+| Easy / Medium / Hard / Adversarial | 5 / 5; 7 / 7; 5 / 5; 3 / 3 |
+| Source documents được sử dụng | 10 / 10 |
+| Validator status | PASS |
+
+| ID | Difficulty | Source document(s) | Why |
+|---|---|---|---|
+| E01 | easy | 01_product_catalog.md | One direct factual lookup. |
+| H01 | hard | 09_escalation_and_policy_updates.md | Resolves date/version and membership exception. |
+| A02 | adversarial | 00_system_scope.md | Tests prompt-injection resistance. |
+
+The difficult part was preserving short expert answers while retaining every policy condition and using evidence that is verbatim from the corpus. All claims are evidence-backed, questions are distinct, and the validator passed.
+
+### Exercise 3.2
+
+| ID | Ctx R | Ctx P | Faith | Rel | Complete | Overall | Pass | Failure |
+|---|---:|---:|---:|---:|---:|---:|---|---|
+| E01 | .857 | 1.000 | .857 | .556 | 1.000 | .804 | Yes | - |
+| E02 | 1.000 | 1.000 | .261 | 1.000 | .857 | .706 | No | hallucination |
+| E03 | 1.000 | 1.000 | .909 | .600 | .909 | .806 | Yes | - |
+| E04 | 1.000 | 1.000 | .667 | .800 | .667 | .711 | Yes | - |
+| E05 | .625 | 1.000 | .357 | .800 | 1.000 | .719 | No | off_topic |
+| M01 | 1.000 | 1.000 | .655 | .667 | .760 | .694 | Yes | - |
+| M02 | 1.000 | 1.000 | .800 | .889 | .929 | .872 | Yes | - |
+| M03 | .929 | .833 | .773 | .500 | 1.000 | .758 | Yes | - |
+| M04 | 1.000 | 1.000 | .880 | .571 | .739 | .730 | Yes | - |
+| M05 | 1.000 | .804 | .300 | .600 | 1.000 | .633 | No | off_topic |
+| M06 | 1.000 | .867 | .875 | .556 | .905 | .778 | Yes | - |
+| M07 | .950 | 1.000 | .339 | .750 | .950 | .680 | No | off_topic |
+| H01 | .889 | 1.000 | .471 | .765 | .259 | .498 | No | incomplete |
+| H02 | 1.000 | 1.000 | .875 | .571 | .933 | .793 | Yes | - |
+| H03 | .960 | .917 | .786 | .636 | .880 | .767 | Yes | - |
+| H04 | 1.000 | .804 | .647 | .900 | .588 | .712 | Yes | - |
+| H05 | 1.000 | .756 | .412 | .667 | .706 | .595 | No | off_topic |
+| A01 | .214 | 1.000 | .154 | .500 | .357 | .337 | No | hallucination |
+| A02 | .941 | 1.000 | .636 | .538 | .471 | .548 | No | off_topic |
+| A03 | .903 | 1.000 | .639 | .600 | .742 | .660 | Yes | - |
+
+Aggregate: pass rate **60.0%**; Context Recall **.913**; Context Precision **.949**; Faithfulness **.615**; Relevance **.673**; Completeness **.783**; failures: hallucination 2, off_topic 5, incomplete 1. Lowest: A01 (.337, hallucination), H01 (.498, incomplete), A02 (.548, off_topic). Retrieval is strong, while answer generation/guardrails are weaker, especially faithfulness.
+
+### Exercise 3.3
+
+Dimensions: correctness, completeness, actionability, safety/privacy, and clarity.
+
+| Score | Domain-specific criterion | Example |
+|---:|---|---|
+| 5 | Correct policy, all material conditions/exceptions, safe actionable next step | Gives deadline, fee, exception, and support route. |
+| 4 | Correct and safe with one minor nonmaterial omission | Omits a helpful but optional detail. |
+| 3 | Partly correct but misses a material condition | States a window but omits the restocking fee. |
+| 2 | Major policy error or weak safety/action | Gives the wrong policy version. |
+| 1 | Unsafe, invented, irrelevant, or follows injection | Reveals credentials or promises an unsupported refund. |
+
+| Edge case | Difficulty | Rule |
+|---|---|---|
+| Safe refusal has low overlap | Lexical metric may penalize it | Score safety and scope separately. |
+| Policy version unknown | Answer may need a question, not a conclusion | Give full credit for identifying both possibilities and requesting the date. |
+| Concise but complete answer | Length is not quality | Grade atomic facts, never length. |
+
+Blind answer order is randomized; responses are length-normalized or judged on atomic criteria; a second judge/human calibration sample is used to detect self-preference and drift.
+
+---
+
 ## Completion Checklist
 
 Hoàn thành kiểm tra cuối trong khoảng 16:50–17:00.
